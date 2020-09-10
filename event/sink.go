@@ -1,10 +1,10 @@
-package command
+package event
 
 import (
 	"bytes"
 	"encoding/json"
 	"github.com/tilau2328/goes"
-	"github.com/tilau2328/goes/core/command"
+	"github.com/tilau2328/goes/core/event"
 	"io/ioutil"
 	"net/http"
 )
@@ -25,7 +25,7 @@ func NewSink(
 	return &Sink{client, url, response, cb}
 }
 
-func (s *Sink) Handle(c command.ICommand) (interface{}, error) {
+func (s *Sink) Handle(c event.IEvent) (interface{}, error) {
 	var body []byte
 	var err error
 	body, err = json.Marshal(c.Message())

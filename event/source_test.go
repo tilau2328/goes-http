@@ -1,11 +1,11 @@
-package command
+package event
 
 import (
 	"bytes"
 	"encoding/json"
 	"github.com/google/uuid"
 	utils "github.com/tilau2328/goes-http"
-	"github.com/tilau2328/goes/core/command"
+	"github.com/tilau2328/goes/core/event"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -14,31 +14,31 @@ import (
 
 var ExpectedHandlerResult = "test"
 
-type TestCommand struct {
+type TestEvent struct {
 	Value string `json:"value"`
 }
 type TestHandler struct{}
 
-func (*TestHandler) Handle(command.ICommand) (interface{}, error) {
+func (*TestHandler) Handle(event.IEvent) (interface{}, error) {
 	return ExpectedHandlerResult, nil
 }
 
 func TestNewSource(t *testing.T) {
-	bus := command.NewBus()
-	source := NewSource(bus, nil, func(interface{}, *http.Request) command.ICommand { return nil })
+	bus := event.NewBus()
+	source := NewSource(bus, nil, func(interface{}, *http.Request) event.IEvent { return nil })
 	if source == nil {
-		t.Errorf("failed to create command source")
+		t.Errorf("failed to create event source")
 	}
 }
 
 func TestSource_Handle(t *testing.T) {
-	bus := command.NewBus()
-	message := &TestCommand{}
+	bus := event.NewBus()
+	message := &TestEvent{}
 	aggregateId := uuid.New()
-	source := NewSource(bus, (*TestCommand)(nil), func(body interface{}, r *http.Request) command.ICommand {
-		return command.NewCommand(uuid.New(), utils.FirstId(r.RequestURI), body)
+	source := NewSource(bus, (*TestEvent)(nil), func(body interface{}, r *http.Request) event.IEvent {
+		return event.NewEvent(uuid.New(), utils.FirstId(r.RequestURI), body)
 	})
-	bus.RegisterHandler((*TestCommand)(nil), &TestHandler{})
+	bus.RegisterHandler((*TestEvent)(nil), &TestHandler{})
 	response := httptest.NewRecorder()
 	b, err := json.Marshal(message)
 	if err != nil {

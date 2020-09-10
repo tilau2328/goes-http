@@ -1,22 +1,22 @@
-package command
+package event
 
 import (
 	"encoding/json"
-	"github.com/tilau2328/goes/core/command"
+	"github.com/tilau2328/goes/core/event"
 	"io/ioutil"
 	"net/http"
 )
 
 type Source struct {
-	bus      command.ICommandBus
+	bus      event.IEventBus
 	request  interface{}
-	template func(interface{}, *http.Request) command.ICommand
+	template func(interface{}, *http.Request) event.IEvent
 }
 
 func NewSource(
-	bus command.ICommandBus,
+	bus event.IEventBus,
 	request interface{},
-	template func(interface{}, *http.Request) command.ICommand,
+	template func(interface{}, *http.Request) event.IEvent,
 ) *Source {
 	return &Source{bus, request, template}
 }

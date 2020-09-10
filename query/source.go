@@ -1,22 +1,22 @@
-package command
+package query
 
 import (
 	"encoding/json"
-	"github.com/tilau2328/goes/core/command"
+	"github.com/tilau2328/goes/core/query"
 	"io/ioutil"
 	"net/http"
 )
 
 type Source struct {
-	bus      command.ICommandBus
+	bus      query.IQueryBus
 	request  interface{}
-	template func(interface{}, *http.Request) command.ICommand
+	template func(interface{}, *http.Request) query.IQuery
 }
 
 func NewSource(
-	bus command.ICommandBus,
+	bus query.IQueryBus,
 	request interface{},
-	template func(interface{}, *http.Request) command.ICommand,
+	template func(interface{}, *http.Request) query.IQuery,
 ) *Source {
 	return &Source{bus, request, template}
 }
