@@ -3,6 +3,7 @@ package command
 import (
 	"encoding/json"
 	"github.com/google/uuid"
+	"github.com/tilau2328/goes"
 	"github.com/tilau2328/goes/core/command"
 	"io/ioutil"
 	"net/http"
@@ -24,8 +25,8 @@ func testMock(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		return
 	}
-	request := &TestCommand{}
-	err = json.Unmarshal(body, request)
+	request := TestCommand{}
+	err = json.Unmarshal(body, &request)
 	if err != nil || request.Value != ExpectedCommandResult {
 		return
 	}
@@ -33,7 +34,7 @@ func testMock(res http.ResponseWriter, req *http.Request) {
 }
 
 func TestNewSink(t *testing.T) {
-	sink := NewSink(&http.Client{}, "", nil, func(body interface{}, response *http.Response) (interface{}, error) { return nil, nil })
+	sink := NewSink("", &http.Client{}, nil)
 	if sink == nil {
 		t.Errorf("failed to create command sink")
 	}
@@ -42,18 +43,23 @@ func TestNewSink(t *testing.T) {
 func TestSink_Handle(t *testing.T) {
 	srv := serverMock()
 	defer srv.Close()
-	var res string
-	sink := NewSink(&http.Client{}, srv.URL+"/test", res, func(body interface{}, response *http.Response) (interface{}, error) {
-		return body, nil
-	})
-	aggregateId := uuid.New()
-	message := &TestCommand{ExpectedCommandResult}
-	c := command.NewCommand(uuid.New(), aggregateId, message)
+	sink := NewSink(srv.URL+"/test", &http.Client{}, "")
+	c := command.NewCommand(uuid.New(), uuid.New(), TestCommand{ExpectedCommandResult})
 	response, err := sink.Handle(c)
 	if err != nil {
 		t.Error(err)
 	}
 	if response != ExpectedHandlerResult {
 		t.Errorf("expected result to be %s but was %s", ExpectedHandlerResult, response)
+	}
+}
+
+func TestSink_Register(t *testing.T) {
+	bus := command.NewBus()
+	sink := NewSink("", &http.Client{}, nil)
+	sink.Register(bus, (*TestCommand)(nil))
+	handler := bus.Handler(goes.MessageType((*TestCommand)(nil)))
+	if handler != sink {
+		t.Errorf("expected handler to be %T but was %T", sink, handler)
 	}
 }

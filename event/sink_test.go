@@ -3,6 +3,7 @@ package event
 import (
 	"encoding/json"
 	"github.com/google/uuid"
+	"github.com/tilau2328/goes"
 	"github.com/tilau2328/goes/core/event"
 	"io/ioutil"
 	"net/http"
@@ -24,8 +25,8 @@ func testMock(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		return
 	}
-	request := &TestEvent{}
-	err = json.Unmarshal(body, request)
+	request := TestEvent{}
+	err = json.Unmarshal(body, &request)
 	if err != nil || request.Value != ExpectedEventResult {
 		return
 	}
@@ -33,7 +34,7 @@ func testMock(res http.ResponseWriter, req *http.Request) {
 }
 
 func TestNewSink(t *testing.T) {
-	sink := NewSink(&http.Client{}, "", nil, func(body interface{}, response *http.Response) (interface{}, error) { return nil, nil })
+	sink := NewSink("", &http.Client{}, nil)
 	if sink == nil {
 		t.Errorf("failed to create event sink")
 	}
@@ -42,18 +43,23 @@ func TestNewSink(t *testing.T) {
 func TestSink_Handle(t *testing.T) {
 	srv := serverMock()
 	defer srv.Close()
-	var res string
-	sink := NewSink(&http.Client{}, srv.URL+"/test", res, func(body interface{}, response *http.Response) (interface{}, error) {
-		return body, nil
-	})
-	aggregateId := uuid.New()
-	message := &TestEvent{ExpectedEventResult}
-	c := event.NewEvent(uuid.New(), aggregateId, message)
+	sink := NewSink(srv.URL+"/test", &http.Client{}, "")
+	c := event.NewEvent(uuid.New(), uuid.New(), TestEvent{ExpectedEventResult})
 	response, err := sink.Handle(c)
 	if err != nil {
 		t.Error(err)
 	}
 	if response != ExpectedHandlerResult {
 		t.Errorf("expected result to be %s but was %s", ExpectedHandlerResult, response)
+	}
+}
+
+func TestSink_Register(t *testing.T) {
+	bus := event.NewBus()
+	sink := NewSink("", &http.Client{}, nil)
+	sink.Register(bus, (*TestEvent)(nil))
+	handler := bus.Handler(goes.MessageType((*TestEvent)(nil)))
+	if handler != sink {
+		t.Errorf("expected handler to be %T but was %T", sink, handler)
 	}
 }

@@ -3,6 +3,7 @@ package query
 import (
 	"encoding/json"
 	"github.com/google/uuid"
+	"github.com/tilau2328/goes"
 	"github.com/tilau2328/goes/core/query"
 	"io/ioutil"
 	"net/http"
@@ -24,8 +25,8 @@ func testMock(res http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		return
 	}
-	request := &TestQuery{}
-	err = json.Unmarshal(body, request)
+	request := TestQuery{}
+	err = json.Unmarshal(body, &request)
 	if err != nil || request.Value != ExpectedQueryResult {
 		return
 	}
@@ -33,7 +34,7 @@ func testMock(res http.ResponseWriter, req *http.Request) {
 }
 
 func TestNewSink(t *testing.T) {
-	sink := NewSink(&http.Client{}, "", nil, func(body interface{}, response *http.Response) (interface{}, error) { return nil, nil })
+	sink := NewSink("", &http.Client{}, nil)
 	if sink == nil {
 		t.Errorf("failed to create query sink")
 	}
@@ -42,18 +43,23 @@ func TestNewSink(t *testing.T) {
 func TestSink_Handle(t *testing.T) {
 	srv := serverMock()
 	defer srv.Close()
-	var res string
-	sink := NewSink(&http.Client{}, srv.URL+"/test", res, func(body interface{}, response *http.Response) (interface{}, error) {
-		return body, nil
-	})
-	aggregateId := uuid.New()
-	message := &TestQuery{ExpectedQueryResult}
-	c := query.NewQuery(uuid.New(), aggregateId, message)
+	sink := NewSink(srv.URL+"/test", &http.Client{}, "")
+	c := query.NewQuery(uuid.New(), uuid.New(), TestQuery{ExpectedQueryResult})
 	response, err := sink.Handle(c)
 	if err != nil {
 		t.Error(err)
 	}
 	if response != ExpectedHandlerResult {
 		t.Errorf("expected result to be %s but was %s", ExpectedHandlerResult, response)
+	}
+}
+
+func TestSink_Register(t *testing.T) {
+	bus := query.NewBus()
+	sink := NewSink("", &http.Client{}, nil)
+	sink.Register(bus, (*TestQuery)(nil))
+	handler := bus.Handler(goes.MessageType((*TestQuery)(nil)))
+	if handler != sink {
+		t.Errorf("expected handler to be %T but was %T", sink, handler)
 	}
 }

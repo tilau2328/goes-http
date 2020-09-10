@@ -15,7 +15,7 @@ import (
 var ExpectedHandlerResult = "test"
 
 type TestCommand struct {
-	Value string `json:"value"`
+	Value string `json:"Value"`
 }
 type TestHandler struct{}
 
@@ -24,18 +24,18 @@ func (*TestHandler) Handle(command.ICommand) (interface{}, error) {
 }
 
 func TestNewSource(t *testing.T) {
-	bus := command.NewBus()
-	source := NewSource(bus, nil, func(interface{}, *http.Request) command.ICommand { return nil })
+	source := NewSource(command.NewBus(), nil, func(interface{}, *http.Request) command.ICommand { return nil })
 	if source == nil {
 		t.Errorf("failed to create command source")
 	}
 }
 
 func TestSource_Handle(t *testing.T) {
+	var result []byte
 	bus := command.NewBus()
-	message := &TestCommand{}
+	message := &TestCommand{ExpectedCommandResult}
 	aggregateId := uuid.New()
-	source := NewSource(bus, (*TestCommand)(nil), func(body interface{}, r *http.Request) command.ICommand {
+	source := NewSource(bus, message, func(body interface{}, r *http.Request) command.ICommand {
 		return command.NewCommand(uuid.New(), utils.FirstId(r.RequestURI), body)
 	})
 	bus.RegisterHandler((*TestCommand)(nil), &TestHandler{})
@@ -44,16 +44,8 @@ func TestSource_Handle(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	var res interface{}
 	req := httptest.NewRequest("post", "/"+aggregateId.String()+"/test", bytes.NewReader(b))
-	res, err = source.Handle(response, req, message)
-	if err != nil {
-		t.Error(err)
-	}
-	if res != ExpectedHandlerResult {
-		t.Errorf("expected response to be %s but was %s", ExpectedHandlerResult, res)
-	}
-	var result []byte
+	source.Handle(response, req)
 	result, err = ioutil.ReadAll(response.Result().Body)
 	if string(result) != "\""+ExpectedHandlerResult+"\"" {
 		t.Errorf("expected handler response to be %s but was %s", "\""+ExpectedHandlerResult+"\"", string(result))
